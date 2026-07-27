@@ -51,7 +51,13 @@ export function setAuthCookie(res: Response, token: string): void {
 }
 
 export function clearAuthCookie(res: Response): void {
-  res.clearCookie(COOKIE_NAME, { path: "/" });
+  // Attributes must match setAuthCookie or browsers keep the session cookie.
+  res.clearCookie(COOKIE_NAME, {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+  });
 }
 
 export function requireAuth(

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Coins, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Coins, Loader2, LogOut } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import type { CreditLedgerEntry, CreditPackage } from '../types';
 
 export const CreditsPage: React.FC = () => {
-  const { tenant, updateCreditBalance } = useAuth();
+  const { tenant, logout, updateCreditBalance } = useAuth();
+  const navigate = useNavigate();
   const [balance, setBalance] = useState(tenant?.creditBalance ?? 0);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [entries, setEntries] = useState<CreditLedgerEntry[]>([]);
@@ -50,9 +51,20 @@ export const CreditsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-4xl mx-auto">
-        <Link to="/" className="inline-flex items-center gap-2 text-indigo-600 text-sm mb-4">
-          <ArrowLeft size={16} /> Volver a lotes
-        </Link>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <Link to="/" className="inline-flex items-center gap-2 text-indigo-600 text-sm">
+            <ArrowLeft size={16} /> Volver a lotes
+          </Link>
+          <button
+            onClick={async () => {
+              await logout();
+              navigate('/');
+            }}
+            className="inline-flex items-center gap-2 text-sm text-slate-600 border rounded-lg px-3 py-1.5 hover:bg-white"
+          >
+            <LogOut size={14} /> Cerrar sesión
+          </button>
+        </div>
         <h1 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-2">
           <Coins className="text-amber-500" /> Créditos Gemini
         </h1>

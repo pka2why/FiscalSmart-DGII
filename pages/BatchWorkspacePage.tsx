@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
   AlertTriangle,
@@ -11,6 +11,7 @@ import {
   FileUp,
   History,
   Loader2,
+  LogOut,
   Pencil,
   Play,
   Trash2,
@@ -521,7 +522,8 @@ const InvoiceReviewModal: React.FC<{
 
 export const BatchWorkspacePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { tenant, updateCreditBalance } = useAuth();
+  const navigate = useNavigate();
+  const { tenant, logout, updateCreditBalance } = useAuth();
   const [batch, setBatch] = useState<FiscalBatch | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [exports, setExports] = useState<BatchExport[]>([]);
@@ -727,6 +729,16 @@ export const BatchWorkspacePage: React.FC = () => {
             className="inline-flex items-center gap-1 border px-3 py-1.5 rounded-lg hover:bg-slate-50"
           >
             <History size={14} /> Historial
+          </button>
+          <button
+            onClick={async () => {
+              await logout();
+              navigate('/');
+            }}
+            className="inline-flex items-center gap-1 border px-3 py-1.5 rounded-lg hover:bg-slate-50 text-slate-600"
+            title="Cerrar sesión"
+          >
+            <LogOut size={14} /> Salir
           </button>
           <button
             onClick={exportBatch}

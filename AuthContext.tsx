@@ -42,7 +42,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await api('/api/auth/logout', { method: 'POST' });
+    try {
+      await api('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Always clear local session even if the request fails.
+    }
     setUser(null);
     setTenant(null);
   };

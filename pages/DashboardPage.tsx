@@ -94,11 +94,11 @@ export const DashboardPage: React.FC = () => {
           <button
             onClick={async () => {
               await logout();
-              navigate('/login');
+              navigate('/');
             }}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-800 text-sm text-left"
           >
-            <LogOut size={16} /> Salir
+            <LogOut size={16} /> Cerrar sesión
           </button>
         </nav>
         <div className="p-4 mt-auto">
@@ -114,6 +114,17 @@ export const DashboardPage: React.FC = () => {
       </aside>
 
       <main className="flex-1 p-6">
+        <div className="flex md:hidden justify-end mb-3">
+          <button
+            onClick={async () => {
+              await logout();
+              navigate('/');
+            }}
+            className="inline-flex items-center gap-2 text-sm text-slate-600 border rounded-lg px-3 py-1.5 hover:bg-white"
+          >
+            <LogOut size={14} /> Cerrar sesión
+          </button>
+        </div>
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
           <div>
             <h2 className="text-2xl font-bold text-slate-800">Lotes fiscales</h2>
