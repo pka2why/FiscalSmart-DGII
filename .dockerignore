@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+.git
+.gitignore
+*.md
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+.vscode
+.idea
+bun.lock
+server.js
+qboService.ts
+metadata.json

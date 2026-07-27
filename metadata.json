@@ -1,0 +1,10 @@
+{
+  "name": "FiscalSmart DGII - Generador 606/607",
+  "description": "Una herramienta inteligente para procesar facturas mediante IA (Gemini) y generar reportes de compras (606) y ventas (607) listos para la DGII.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
