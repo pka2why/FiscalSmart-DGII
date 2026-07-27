@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  BarChart3,
   Building2,
   Coins,
   FileSpreadsheet,
@@ -250,6 +251,12 @@ export const DashboardPage: React.FC = () => {
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-800 text-sm"
           >
             <LayoutDashboard size={16} /> Lotes
+          </Link>
+          <Link
+            to="/stats"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-indigo-800 text-sm"
+          >
+            <BarChart3 size={16} /> IT1
           </Link>
           <Link
             to="/credits"
