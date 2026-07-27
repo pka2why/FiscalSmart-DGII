@@ -18,6 +18,10 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/db ./db
+
+RUN mkdir -p /data
+ENV DATA_DIR=/data
 
 EXPOSE 3000
 CMD ["node", "dist/server.cjs"]

@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import { ReportType } from './types';
 
-export const generateExcel = (
+export const buildExcelWorkbook = (
   data: any[],
   type: ReportType,
   rncInformante: string = '',
@@ -243,15 +243,36 @@ export const generateExcel = (
   // Append sheet to workbook
   XLSX.utils.book_append_sheet(wb, ws, `Formato ${type}`);
 
-  // Generate output file and trigger download
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([wbout], { type: 'application/octet-stream' });
+  return wb;
+};
+
+export const buildExcelBuffer = (
+  data: any[],
+  type: ReportType,
+  rncInformante: string = '',
+  periodo: string = ''
+): { buffer: Buffer; filename: string } => {
+  const wb = buildExcelWorkbook(data, type, rncInformante, periodo);
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }) as Buffer;
+  const cleanPeriod = periodo ? `_${periodo}` : '';
+  return {
+    buffer: wbout,
+    filename: `Formato_${type}${cleanPeriod}_Exportado.xlsx`,
+  };
+};
+
+export const generateExcel = (
+  data: any[],
+  type: ReportType,
+  rncInformante: string = '',
+  periodo: string = ''
+) => {
+  const { buffer, filename } = buildExcelBuffer(data, type, rncInformante, periodo);
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  
-  const cleanPeriod = periodo ? `_${periodo}` : '';
-  a.download = `Formato_${type}${cleanPeriod}_Exportado.xlsx`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 };

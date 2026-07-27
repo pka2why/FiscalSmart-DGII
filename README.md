@@ -1,18 +1,19 @@
-# FiscalSmart DGII — Generador 606/607
+# FiscalSmart DGII — Generador 606/607 multi-tenant
 
-Herramienta para procesar facturas con Gemini y generar reportes DGII **606** (compras) y **607** (ventas) en Excel.
+Herramienta para procesar facturas con Gemini, organizar lotes 606/607 por periodo fiscal, persistir en Postgres y controlar uso con créditos.
 
 ## Requisitos
 
 - Node.js 20+
-- API key de [Google AI Studio / Gemini](https://aistudio.google.com/apikey)
+- PostgreSQL (`DATABASE_URL`)
+- API key de [Gemini](https://aistudio.google.com/apikey)
 
 ## Desarrollo local
 
 ```bash
 npm install
 cp .env.example .env.local
-# Edita .env.local y pon GEMINI_API_KEY=...
+# Completa DATABASE_URL (usa DATABASE_PUBLIC_URL de Railway), GEMINI_API_KEY, JWT_SECRET
 npm run dev
 ```
 
@@ -22,31 +23,45 @@ Abre [http://localhost:3000](http://localhost:3000).
 |---------|-------------|
 | `npm run dev` | Desarrollo (Express + Vite) |
 | `npm run build` | Build frontend + servidor |
-| `npm start` | Producción (`dist/server.cjs`) |
+| `npm start` | Producción |
 | `npm run lint` | Typecheck |
 
-## Deploy en Railway
+## Railway
 
-1. Conecta este repositorio en [Railway](https://railway.app).
-2. Railway detectará el `Dockerfile` / `railway.toml`.
-3. En **Variables** agrega:
-   - `GEMINI_API_KEY` = tu API key
-   - `NODE_ENV` = `production` (opcional; el Dockerfile ya lo define)
-4. Genera un dominio público (Settings → Networking → Generate Domain).
+El proyecto ya tiene Postgres. En el servicio de la **app**:
 
-Railway inyecta `PORT` automáticamente; el servidor lo respeta.
+1. Variable `DATABASE_URL=${{Postgres.DATABASE_URL}}` (red privada)
+2. `GEMINI_API_KEY`, `JWT_SECRET`, `ADMIN_SECRET`, `SIGNUP_BONUS_CREDITS=10`
+3. Volume montado en `/data` (uploads de facturas)
+4. `NODE_ENV=production`
 
-### Variables
+Healthcheck: `/api/health`
 
-| Variable | Obligatoria | Descripción |
-|----------|-------------|-------------|
-| `GEMINI_API_KEY` | Sí | Clave de Gemini para OCR de facturas |
-| `PORT` | No | Puerto HTTP (Railway lo asigna) |
-| `NODE_ENV` | No | Usa `production` en deploy |
+### Créditos
+
+- 1 crédito = 1 factura enviada a Gemini OCR
+- Bonus al registrarse (`SIGNUP_BONUS_CREDITS`, default 10)
+- Upload / edición / Excel no consumen créditos
+
+Otorgar créditos (facturación offline):
+
+```bash
+curl -X POST https://TU_DOMINIO/api/admin/credits/grant \
+  -H "Content-Type: application/json" \
+  -H "x-admin-secret: TU_ADMIN_SECRET" \
+  -d '{"email":"cliente@empresa.com","credits":100,"note":"Factura 001"}'
+```
+
+Uso agregado para facturar:
+
+```bash
+curl "https://TU_DOMINIO/api/admin/credits/usage?from=2026-07-01&to=2026-07-31" \
+  -H "x-admin-secret: TU_ADMIN_SECRET"
+```
 
 ## Stack
 
-- React 19 + Vite + TypeScript
-- Express (API `/api/process-invoice`, `/api/config`)
-- Google Gemini (`@google/genai`)
-- Excel (`xlsx`)
+- React 19 + Vite + React Router
+- Express + Postgres (`pg`)
+- Gemini OCR + créditos por tenant
+- Excel (`xlsx`) con historial versionado de exportaciones
