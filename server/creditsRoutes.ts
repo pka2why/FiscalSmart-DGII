@@ -5,9 +5,12 @@ import {
   getBalance,
   listLedger,
   listPackages,
+  listTenantLedgerAdmin,
+  listTenantsAdmin,
   usageReport,
 } from "./credits.ts";
 import { AuthedRequest, requireAdminSecret, requireAuth } from "./middleware.ts";
+import { paramId } from "./params.ts";
 
 export const creditsRouter = Router();
 
@@ -35,6 +38,24 @@ creditsRouter.get("/ledger", requireAuth, async (req: AuthedRequest, res) => {
 });
 
 export const adminCreditsRouter = Router();
+
+adminCreditsRouter.get("/tenants", requireAdminSecret, async (_req, res) => {
+  try {
+    const tenants = await listTenantsAdmin();
+    res.json({ tenants });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Error" });
+  }
+});
+
+adminCreditsRouter.get("/tenants/:id/ledger", requireAdminSecret, async (req, res) => {
+  try {
+    const entries = await listTenantLedgerAdmin(paramId(req.params.id), 40);
+    res.json({ entries });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Error" });
+  }
+});
 
 adminCreditsRouter.post("/grant", requireAdminSecret, async (req, res) => {
   try {

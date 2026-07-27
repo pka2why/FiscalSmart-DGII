@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './AuthContext';
+import { AdminCreditsPage } from './pages/AdminCreditsPage';
 import { BatchWorkspacePage } from './pages/BatchWorkspacePage';
 import { CreditsPage } from './pages/CreditsPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -76,6 +77,7 @@ const AppRoutes: React.FC = () => (
         </Protected>
       }
     />
+    <Route path="/admin/credits" element={<AdminCreditsPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 );

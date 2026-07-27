@@ -231,3 +231,29 @@ export async function findTenantIdByEmail(email: string): Promise<string | null>
   );
   return result.rows[0]?.tenant_id ?? null;
 }
+
+export async function listTenantsAdmin() {
+  const result = await pool.query(
+    `SELECT t.id, t.name, t.rnc, t.credit_balance, t.created_at,
+            u.email AS owner_email, u.name AS owner_name
+     FROM tenants t
+     LEFT JOIN users u ON u.tenant_id = t.id AND u.role = 'owner'
+     ORDER BY t.created_at DESC`
+  );
+  return result.rows.map((row) => ({
+    tenantId: row.id,
+    name: row.name,
+    rnc: row.rnc,
+    creditBalance: row.credit_balance,
+    createdAt: row.created_at,
+    ownerEmail: row.owner_email,
+    ownerName: row.owner_name,
+  }));
+}
+
+export async function listTenantLedgerAdmin(
+  tenantId: string,
+  limit = 30
+) {
+  return listLedger(tenantId, limit, 0);
+}
