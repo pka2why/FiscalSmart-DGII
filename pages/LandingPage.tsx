@@ -1,8 +1,45 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { ArrowDown, CheckCircle2, Loader2, Send } from 'lucide-react';
+import { api } from '../api';
 
 export const LandingPage: React.FC = () => {
+  const location = useLocation();
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    company: '',
+    message: '',
+  });
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (location.hash === '#contacto') {
+      const el = document.getElementById('contacto');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [location.hash]);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSending(true);
+    setError('');
+    try {
+      await api('/api/contact', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      });
+      setSent(true);
+      setForm({ name: '', email: '', company: '', message: '' });
+    } catch (err: any) {
+      setError(err.message || 'No se pudo enviar el mensaje');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="fs-landing min-h-screen text-[#e8f0ea] overflow-x-hidden">
       <style>{`
@@ -79,17 +116,40 @@ export const LandingPage: React.FC = () => {
             linear-gradient(90deg, rgba(215, 235, 224, 0.04) 1px, transparent 1px);
           background-size: 48px 48px;
         }
+
+        .fs-field {
+          width: 100%;
+          border: 1px solid rgba(13, 59, 46, 0.15);
+          border-radius: 0.75rem;
+          padding: 0.7rem 0.9rem;
+          background: #fff;
+          color: var(--fs-ink);
+          outline: none;
+        }
+
+        .fs-field:focus {
+          border-color: var(--fs-moss);
+          box-shadow: 0 0 0 3px rgba(31, 107, 79, 0.15);
+        }
       `}</style>
 
       <div className="fs-grid relative min-h-screen flex flex-col">
         <header className="relative z-10 flex items-center justify-between px-5 sm:px-10 pt-6 fs-rise-1">
           <div className="brand text-2xl sm:text-3xl text-white">FiscalSmart</div>
-          <Link
-            to="/login"
-            className="text-sm font-medium text-[var(--fs-mist)] hover:text-white transition-colors"
-          >
-            Iniciar sesión
-          </Link>
+          <div className="flex items-center gap-4">
+            <a
+              href="#contacto"
+              className="text-sm font-medium text-[var(--fs-mist)] hover:text-white transition-colors hidden sm:inline"
+            >
+              Contacto
+            </a>
+            <Link
+              to="/login"
+              className="text-sm font-medium text-[var(--fs-mist)] hover:text-white transition-colors"
+            >
+              Iniciar sesión
+            </Link>
+          </div>
         </header>
 
         <section className="relative z-10 flex-1 flex flex-col px-5 sm:px-10 pt-10 sm:pt-14 pb-0 max-w-6xl mx-auto w-full">
@@ -106,18 +166,18 @@ export const LandingPage: React.FC = () => {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3 fs-rise-3">
-            <Link
-              to="/register"
+            <a
+              href="#contacto"
               className="fs-cta-primary inline-flex items-center gap-2 rounded-lg px-6 py-3 text-base font-semibold shadow-lg shadow-black/25 transition"
             >
-              Crear cuenta gratis
-              <ArrowRight size={18} />
-            </Link>
+              Solicitar acceso
+              <ArrowDown size={18} />
+            </a>
             <Link
               to="/login"
               className="inline-flex items-center gap-2 rounded-lg px-6 py-3 text-base font-medium text-[var(--fs-mist)] border border-white/15 hover:bg-white/5 transition"
             >
-              Ya tengo cuenta
+              Iniciar sesión
             </Link>
           </div>
 
@@ -133,22 +193,110 @@ export const LandingPage: React.FC = () => {
         </section>
       </div>
 
-      <section className="bg-[var(--fs-cream)] text-[var(--fs-ink)] px-5 sm:px-10 py-16 sm:py-20">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="headline text-2xl sm:text-3xl mb-3">
-            Del comprobante al formato DGII
+      <section
+        id="contacto"
+        className="bg-[var(--fs-cream)] text-[var(--fs-ink)] px-5 sm:px-10 py-16 sm:py-20 scroll-mt-6"
+      >
+        <div className="max-w-xl mx-auto">
+          <h2 className="headline text-2xl sm:text-3xl mb-2 text-center">
+            Contáctanos
           </h2>
-          <p className="text-[#3d5c4e] text-base sm:text-lg leading-relaxed">
-            Sube facturas, revisa los datos extraídos y exporta el Excel 606 o 607.
-            Empiezas con créditos de bienvenida al registrarte.
+          <p className="text-[#3d5c4e] text-base leading-relaxed text-center mb-8">
+            Cuéntanos sobre tu empresa y te ayudamos a empezar con FiscalSmart.
+            El mensaje llega a{' '}
+            <a
+              href="mailto:info@bayonetrobles.com"
+              className="font-medium text-[var(--fs-forest)] underline underline-offset-2"
+            >
+              info@bayonetrobles.com
+            </a>
+            .
           </p>
-          <Link
-            to="/register"
-            className="mt-8 inline-flex items-center gap-2 rounded-lg px-6 py-3 text-base font-semibold bg-[var(--fs-forest)] text-white hover:bg-[var(--fs-moss)] transition"
-          >
-            Empezar ahora
-            <ArrowRight size={18} />
-          </Link>
+
+          {sent ? (
+            <div className="bg-white border border-[var(--fs-moss)]/20 rounded-2xl p-8 text-center">
+              <CheckCircle2 className="mx-auto text-[var(--fs-moss)] mb-3" size={36} />
+              <p className="font-semibold text-lg">Mensaje enviado</p>
+              <p className="text-[#3d5c4e] text-sm mt-2">
+                Te responderemos pronto a tu correo.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSent(false)}
+                className="mt-6 text-sm font-medium text-[var(--fs-forest)] underline underline-offset-2"
+              >
+                Enviar otro mensaje
+              </button>
+            </div>
+          ) : (
+            <form
+              onSubmit={onSubmit}
+              className="bg-white border border-[var(--fs-ink)]/8 rounded-2xl p-6 sm:p-8 space-y-4 shadow-sm"
+            >
+              <div>
+                <label className="block text-sm font-medium text-[#3d5c4e] mb-1">
+                  Nombre
+                </label>
+                <input
+                  required
+                  className="fs-field"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  autoComplete="name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#3d5c4e] mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  className="fs-field"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  autoComplete="email"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#3d5c4e] mb-1">
+                  Empresa <span className="font-normal opacity-60">(opcional)</span>
+                </label>
+                <input
+                  className="fs-field"
+                  value={form.company}
+                  onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+                  autoComplete="organization"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#3d5c4e] mb-1">
+                  Mensaje
+                </label>
+                <textarea
+                  required
+                  rows={5}
+                  className="fs-field resize-y min-h-[120px]"
+                  value={form.message}
+                  onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+                  placeholder="¿Cómo podemos ayudarte?"
+                />
+              </div>
+              {error && <p className="text-sm text-red-700">{error}</p>}
+              <button
+                type="submit"
+                disabled={sending}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-semibold bg-[var(--fs-forest)] text-white hover:bg-[var(--fs-moss)] transition disabled:opacity-60"
+              >
+                {sending ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <Send size={18} />
+                )}
+                Enviar mensaje
+              </button>
+            </form>
+          )}
         </div>
       </section>
 

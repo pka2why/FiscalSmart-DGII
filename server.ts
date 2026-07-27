@@ -3,6 +3,7 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import { authRouter } from "./server/auth.ts";
 import { batchesRouter } from "./server/batches.ts";
+import { contactRouter } from "./server/contact.ts";
 import { adminCreditsRouter, creditsRouter } from "./server/creditsRoutes.ts";
 import { migrate } from "./server/db.ts";
 import { exportsRouter } from "./server/exports.ts";
@@ -39,6 +40,7 @@ async function startServer() {
   });
 
   app.use("/api/auth", authRouter);
+  app.use("/api/contact", contactRouter);
   app.use("/api/credits", creditsRouter);
   app.use("/api/admin/credits", adminCreditsRouter);
   app.use("/api/batches", batchesRouter);

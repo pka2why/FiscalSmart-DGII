@@ -71,9 +71,9 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
         <p className="text-sm text-slate-500 mt-4 text-center">
-          ¿No tienes cuenta?{' '}
-          <Link to="/register" className="text-indigo-600 font-medium">
-            Regístrate
+          ¿Necesitas acceso?{' '}
+          <Link to="/#contacto" className="text-indigo-600 font-medium">
+            Contáctanos
           </Link>
         </p>
       </div>
