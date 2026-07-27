@@ -89,18 +89,23 @@ ALTER TABLE fiscal_batches DROP CONSTRAINT IF EXISTS fiscal_batches_tenant_id_re
 
 DO $$
 BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'fiscal_batches' AND column_name = 'company_id'
-  ) THEN
+  IF NOT EXISTS (SELECT 1 FROM fiscal_batches WHERE company_id IS NULL) THEN
     ALTER TABLE fiscal_batches ALTER COLUMN company_id SET NOT NULL;
   END IF;
-EXCEPTION
-  WHEN others THEN NULL;
 END $$;
 
-CREATE UNIQUE INDEX IF NOT EXISTS fiscal_batches_company_report_period_key
-  ON fiscal_batches (company_id, report_type, period);
+DROP INDEX IF EXISTS fiscal_batches_company_report_period_key;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fiscal_batches_company_report_period_key'
+  ) THEN
+    ALTER TABLE fiscal_batches
+      ADD CONSTRAINT fiscal_batches_company_report_period_key
+      UNIQUE (company_id, report_type, period);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_batches_tenant ON fiscal_batches(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_batches_company ON fiscal_batches(company_id);
