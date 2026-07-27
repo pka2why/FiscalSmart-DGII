@@ -13,7 +13,7 @@ exportsRouter.post(
   requireAuth,
   async (req: AuthedRequest, res) => {
     try {
-      const batch = await assertBatchAccess(paramId(req.params.id), req.user!.tenantId);
+      const batch = await assertBatchAccess(paramId(req.params.id), req.user!.id);
       if (!batch) return res.status(404).json({ error: "Lote no encontrado" });
 
       const invoices = await pool.query(
@@ -86,7 +86,7 @@ exportsRouter.get(
   requireAuth,
   async (req: AuthedRequest, res) => {
     try {
-      const batch = await assertBatchAccess(paramId(req.params.id), req.user!.tenantId);
+      const batch = await assertBatchAccess(paramId(req.params.id), req.user!.id);
       if (!batch) return res.status(404).json({ error: "Lote no encontrado" });
 
       const result = await pool.query(
@@ -119,14 +119,18 @@ exportsRouter.get(
   async (req: AuthedRequest, res) => {
     try {
       const result = await pool.query(
-        `SELECT e.*, b.tenant_id, b.report_type, b.period, b.rnc_informante
+        `SELECT e.*, b.id AS batch_id_ref, b.company_id, b.report_type, b.period, b.rnc_informante
          FROM batch_exports e
          JOIN fiscal_batches b ON b.id = e.batch_id
          WHERE e.id = $1`,
         [paramId(req.params.id)]
       );
       const row = result.rows[0];
-      if (!row || row.tenant_id !== req.user!.tenantId) {
+      if (!row) {
+        return res.status(404).json({ error: "Exportación no encontrada" });
+      }
+      const batch = await assertBatchAccess(row.batch_id, req.user!.id);
+      if (!batch) {
         return res.status(404).json({ error: "Exportación no encontrada" });
       }
 

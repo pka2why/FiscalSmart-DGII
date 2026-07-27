@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { StatsPage } from './pages/StatsPage';
 
 const Protected: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -81,6 +82,14 @@ const AppRoutes: React.FC = () => (
       element={
         <Protected>
           <CreditsPage />
+        </Protected>
+      }
+    />
+    <Route
+      path="/stats"
+      element={
+        <Protected>
+          <StatsPage />
         </Protected>
       }
     />

@@ -69,9 +69,13 @@ export interface InvoiceData607 {
 export interface AuthUser {
   id: string;
   tenantId: string;
+  companyId: string;
   email: string;
   name: string;
+  /** Role in the active company */
   role: string;
+  /** Role on the tenant account */
+  tenantRole: string;
 }
 
 export interface Tenant {
@@ -81,9 +85,27 @@ export interface Tenant {
   creditBalance: number;
 }
 
+export interface Company {
+  id: string;
+  tenantId: string;
+  name: string;
+  rnc: string;
+  role: string;
+  createdAt: string;
+}
+
+export interface CompanyMember {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  createdAt?: string;
+}
+
 export interface FiscalBatch {
   id: string;
   tenantId: string;
+  companyId: string;
   reportType: '606' | '607';
   period: string;
   rncInformante: string;
@@ -139,4 +161,74 @@ export interface CreditLedgerEntry {
   invoiceId?: string | null;
   meta?: Record<string, unknown>;
   createdAt: string;
+}
+
+export interface It1BreakdownRow {
+  code: string;
+  label: string;
+  count: number;
+  total: number;
+  itbis: number;
+}
+
+export interface It1Compras606 {
+  montoBienes: number;
+  montoServicios: number;
+  totalFacturado: number;
+  itbisFacturado: number;
+  itbisRetenido: number;
+  itbisSujetoACosto: number;
+  itbisPorAdelantar: number;
+  itbisPercibidoenCompras: number;
+  montoRetencionISR: number;
+  isrPercibidoenCompras: number;
+  impuestoSelectivoConsumo: number;
+  otrosImpuestos: number;
+  montoPropinaLegal: number;
+}
+
+export interface It1Ventas607 {
+  montoFacturado: number;
+  itbisFacturado: number;
+  itbisRetenidoPorTerceros: number;
+  itbisPercibido: number;
+  retencionRentaPorTerceros: number;
+  isrPercibido: number;
+  impuestoSelectivoConsumo: number;
+  otrosImpuestos: number;
+  montoPropinaLegal: number;
+  montoEfectivo: number;
+  montoChequeTransferencia: number;
+  montoTarjeta: number;
+  montoVentaCredito: number;
+  montoBonos: number;
+  montoPermuta: number;
+  montoOtrasFormas: number;
+}
+
+export interface It1Stats {
+  period: string;
+  rncInformante: string;
+  ops: {
+    count606: number;
+    count607: number;
+    pending: number;
+    error: number;
+    completed: number;
+  };
+  kpis: {
+    totalCompras: number;
+    totalVentas: number;
+    itbisCredito: number;
+    itbisGenerado: number;
+    itbisRetenido606: number;
+    itbisAPagar: number;
+  };
+  compras606: It1Compras606;
+  ventas607: It1Ventas607;
+  byTipoGasto: It1BreakdownRow[];
+  byTipoIngreso: It1BreakdownRow[];
+  byNcfPrefix606: It1BreakdownRow[];
+  byNcfPrefix607: It1BreakdownRow[];
+  byFormaPago606: It1BreakdownRow[];
 }

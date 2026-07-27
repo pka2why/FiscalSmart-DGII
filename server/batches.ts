@@ -1,29 +1,41 @@
 import { Router } from "express";
 import { pool } from "./db.ts";
+import { assertCompanyAccess } from "./companies.ts";
 import { AuthedRequest, requireAuth } from "./middleware.ts";
 import { paramId } from "./params.ts";
 
 export const batchesRouter = Router();
 
-async function assertBatchAccess(batchId: string, tenantId: string) {
+/** Batch access if the user is a member of the batch's company. */
+async function assertBatchAccess(batchId: string, userId: string) {
   const result = await pool.query(
-    `SELECT * FROM fiscal_batches WHERE id = $1 AND tenant_id = $2`,
-    [batchId, tenantId]
+    `SELECT b.* FROM fiscal_batches b WHERE b.id = $1`,
+    [batchId]
   );
-  return result.rows[0] || null;
+  const batch = result.rows[0];
+  if (!batch) return null;
+  const membership = await assertCompanyAccess(userId, batch.company_id);
+  if (!membership) return null;
+  return batch;
 }
 
 batchesRouter.get("/", requireAuth, async (req: AuthedRequest, res) => {
   try {
+    const companyId = req.user!.companyId;
+    const membership = await assertCompanyAccess(req.user!.id, companyId);
+    if (!membership) {
+      return res.status(403).json({ error: "Sin acceso a la empresa activa" });
+    }
+
     const { period, reportType } = req.query;
-    const params: unknown[] = [req.user!.tenantId];
+    const params: unknown[] = [companyId];
     let sql = `
       SELECT b.*,
         (SELECT COUNT(*)::int FROM invoices i WHERE i.batch_id = b.id) AS invoice_count,
         (SELECT COUNT(*)::int FROM invoices i WHERE i.batch_id = b.id AND i.status = 'completed') AS completed_count,
         (SELECT MAX(e.version) FROM batch_exports e WHERE e.batch_id = b.id) AS latest_export_version
       FROM fiscal_batches b
-      WHERE b.tenant_id = $1 AND b.status <> 'archived'`;
+      WHERE b.company_id = $1 AND b.status <> 'archived'`;
 
     if (period) {
       params.push(period);
@@ -46,6 +58,12 @@ batchesRouter.get("/", requireAuth, async (req: AuthedRequest, res) => {
 
 batchesRouter.post("/", requireAuth, async (req: AuthedRequest, res) => {
   try {
+    const companyId = req.user!.companyId;
+    const membership = await assertCompanyAccess(req.user!.id, companyId);
+    if (!membership) {
+      return res.status(403).json({ error: "Sin acceso a la empresa activa" });
+    }
+
     const { reportType, period, rncInformante } = req.body || {};
     if (!reportType || !period || !/^\d{6}$/.test(String(period))) {
       return res.status(400).json({ error: "reportType y period (YYYYMM) requeridos" });
@@ -54,19 +72,17 @@ batchesRouter.post("/", requireAuth, async (req: AuthedRequest, res) => {
       return res.status(400).json({ error: "reportType inválido" });
     }
 
-    const tenant = await pool.query(`SELECT rnc FROM tenants WHERE id = $1`, [
-      req.user!.tenantId,
-    ]);
-    const defaultRnc = tenant.rows[0]?.rnc || "";
+    const defaultRnc = membership.rnc || "";
 
     const result = await pool.query(
-      `INSERT INTO fiscal_batches (tenant_id, report_type, period, rnc_informante, created_by)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (tenant_id, report_type, period)
+      `INSERT INTO fiscal_batches (tenant_id, company_id, report_type, period, rnc_informante, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (company_id, report_type, period)
        DO UPDATE SET updated_at = NOW()
        RETURNING *`,
       [
         req.user!.tenantId,
+        companyId,
         reportType,
         period,
         rncInformante || defaultRnc,
@@ -82,7 +98,7 @@ batchesRouter.post("/", requireAuth, async (req: AuthedRequest, res) => {
 
 batchesRouter.get("/:id", requireAuth, async (req: AuthedRequest, res) => {
   try {
-    const batch = await assertBatchAccess(paramId(req.params.id), req.user!.tenantId);
+    const batch = await assertBatchAccess(paramId(req.params.id), req.user!.id);
     if (!batch) return res.status(404).json({ error: "Lote no encontrado" });
 
     const invoices = await pool.query(
@@ -103,7 +119,7 @@ batchesRouter.get("/:id", requireAuth, async (req: AuthedRequest, res) => {
 
 batchesRouter.patch("/:id", requireAuth, async (req: AuthedRequest, res) => {
   try {
-    const batch = await assertBatchAccess(paramId(req.params.id), req.user!.tenantId);
+    const batch = await assertBatchAccess(paramId(req.params.id), req.user!.id);
     if (!batch) return res.status(404).json({ error: "Lote no encontrado" });
 
     const { rncInformante, status } = req.body || {};
@@ -124,7 +140,7 @@ batchesRouter.patch("/:id", requireAuth, async (req: AuthedRequest, res) => {
 
 batchesRouter.post("/:id/archive", requireAuth, async (req: AuthedRequest, res) => {
   try {
-    const batch = await assertBatchAccess(paramId(req.params.id), req.user!.tenantId);
+    const batch = await assertBatchAccess(paramId(req.params.id), req.user!.id);
     if (!batch) return res.status(404).json({ error: "Lote no encontrado" });
 
     const result = await pool.query(
@@ -142,6 +158,7 @@ export function mapBatch(row: any) {
   return {
     id: row.id,
     tenantId: row.tenant_id,
+    companyId: row.company_id,
     reportType: row.report_type,
     period: row.period,
     rncInformante: row.rnc_informante,

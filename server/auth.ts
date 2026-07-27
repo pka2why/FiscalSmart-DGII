@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 import { pool } from "./db.ts";
 import { grantSignupBonus, getBalance } from "./credits.ts";
 import {
+  buildAuthUser,
+  sessionPayload,
+} from "./companies.ts";
+import {
   AuthedRequest,
   clearAuthCookie,
   requireAuth,
@@ -39,6 +43,13 @@ authRouter.post("/register", async (req, res) => {
         [companyName, rnc || ""]
       );
       const tenant = tenantRes.rows[0];
+      const companyRes = await client.query(
+        `INSERT INTO companies (tenant_id, name, rnc)
+         VALUES ($1, $2, $3)
+         RETURNING id, tenant_id, name, rnc, created_at`,
+        [tenant.id, companyName, rnc || ""]
+      );
+      const company = companyRes.rows[0];
       const userRes = await client.query(
         `INSERT INTO users (tenant_id, email, password_hash, name, role)
          VALUES ($1, $2, $3, $4, 'owner')
@@ -46,20 +57,26 @@ authRouter.post("/register", async (req, res) => {
         [tenant.id, String(email).toLowerCase().trim(), passwordHash, name]
       );
       const user = userRes.rows[0];
+      await client.query(
+        `INSERT INTO company_members (company_id, user_id, role)
+         VALUES ($1, $2, 'owner')`,
+        [company.id, user.id]
+      );
       await client.query("COMMIT");
 
       await grantSignupBonus(tenant.id, user.id);
       const balance = await getBalance(tenant.id);
 
-      const authUser = {
+      const authUser = buildAuthUser({
         id: user.id,
         tenantId: user.tenant_id,
         email: user.email,
         name: user.name,
-        role: user.role,
-      };
-      const token = signToken(authUser);
-      setAuthCookie(res, token);
+        tenantRole: user.role,
+        companyId: company.id,
+        companyRole: "owner",
+      });
+      setAuthCookie(res, signToken(authUser));
 
       res.status(201).json({
         user: authUser,
@@ -69,6 +86,24 @@ authRouter.post("/register", async (req, res) => {
           rnc: tenant.rnc,
           creditBalance: balance,
         },
+        company: {
+          id: company.id,
+          tenantId: company.tenant_id,
+          name: company.name,
+          rnc: company.rnc,
+          role: "owner",
+          createdAt: company.created_at,
+        },
+        companies: [
+          {
+            id: company.id,
+            tenantId: company.tenant_id,
+            name: company.name,
+            rnc: company.rnc,
+            role: "owner",
+            createdAt: company.created_at,
+          },
+        ],
       });
     } catch (err) {
       await client.query("ROLLBACK");
@@ -90,10 +125,8 @@ authRouter.post("/login", async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT u.id, u.email, u.name, u.role, u.tenant_id, u.password_hash,
-              t.name AS tenant_name, t.rnc, t.credit_balance
+      `SELECT u.id, u.email, u.name, u.role, u.tenant_id, u.password_hash
        FROM users u
-       JOIN tenants t ON t.id = u.tenant_id
        WHERE LOWER(u.email) = LOWER($1)`,
       [email]
     );
@@ -107,23 +140,19 @@ authRouter.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
-    const authUser = {
-      id: row.id,
-      tenantId: row.tenant_id,
-      email: row.email,
-      name: row.name,
-      role: row.role,
-    };
-    setAuthCookie(res, signToken(authUser));
+    const session = await sessionPayload(row.id);
+    if (!session || !session.user) {
+      return res.status(403).json({
+        error: session?.error || "Usuario sin empresas asignadas",
+      });
+    }
 
+    setAuthCookie(res, signToken(session.user));
     res.json({
-      user: authUser,
-      tenant: {
-        id: row.tenant_id,
-        name: row.tenant_name,
-        rnc: row.rnc,
-        creditBalance: row.credit_balance,
-      },
+      user: session.user,
+      tenant: session.tenant,
+      company: session.company,
+      companies: session.companies,
     });
   } catch (err: any) {
     console.error("[auth/login]", err);
@@ -138,32 +167,23 @@ authRouter.post("/logout", (_req, res) => {
 
 authRouter.get("/me", requireAuth, async (req: AuthedRequest, res) => {
   try {
-    const result = await pool.query(
-      `SELECT u.id, u.email, u.name, u.role, u.tenant_id,
-              t.name AS tenant_name, t.rnc, t.credit_balance
-       FROM users u
-       JOIN tenants t ON t.id = u.tenant_id
-       WHERE u.id = $1`,
-      [req.user!.id]
-    );
-    const row = result.rows[0];
-    if (!row) {
-      return res.status(401).json({ error: "Usuario no encontrado" });
+    const session = await sessionPayload(req.user!.id, req.user!.companyId);
+    if (!session || !session.user) {
+      return res.status(401).json({
+        error: session?.error || "Usuario no encontrado",
+      });
     }
+
+    // Re-issue cookie if active company was corrected
+    if (session.user.companyId !== req.user!.companyId) {
+      setAuthCookie(res, signToken(session.user));
+    }
+
     res.json({
-      user: {
-        id: row.id,
-        tenantId: row.tenant_id,
-        email: row.email,
-        name: row.name,
-        role: row.role,
-      },
-      tenant: {
-        id: row.tenant_id,
-        name: row.tenant_name,
-        rnc: row.rnc,
-        creditBalance: row.credit_balance,
-      },
+      user: session.user,
+      tenant: session.tenant,
+      company: session.company,
+      companies: session.companies,
     });
   } catch (err: any) {
     console.error("[auth/me]", err);

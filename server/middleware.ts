@@ -4,9 +4,13 @@ import jwt from "jsonwebtoken";
 export interface AuthUser {
   id: string;
   tenantId: string;
+  companyId: string;
   email: string;
   name: string;
+  /** Role in the active company */
   role: string;
+  /** Role on the tenant account (owner can create companies) */
+  tenantRole: string;
 }
 
 export interface AuthedRequest extends Request {
@@ -31,9 +35,11 @@ export function signToken(user: AuthUser): string {
     {
       id: user.id,
       tenantId: user.tenantId,
+      companyId: user.companyId,
       email: user.email,
       name: user.name,
       role: user.role,
+      tenantRole: user.tenantRole,
     },
     getJwtSecret(),
     { expiresIn: "7d" }
@@ -77,13 +83,22 @@ export function requireAuth(
       return;
     }
 
-    const payload = jwt.verify(token, getJwtSecret()) as AuthUser;
+    const payload = jwt.verify(token, getJwtSecret()) as AuthUser & {
+      companyId?: string;
+      tenantRole?: string;
+    };
+    if (!payload.companyId) {
+      res.status(401).json({ error: "Sesión desactualizada; vuelve a iniciar sesión" });
+      return;
+    }
     req.user = {
       id: payload.id,
       tenantId: payload.tenantId,
+      companyId: payload.companyId,
       email: payload.email,
       name: payload.name,
       role: payload.role,
+      tenantRole: payload.tenantRole || "member",
     };
     next();
   } catch {

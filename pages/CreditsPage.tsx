@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Coins, Loader2, LogOut } from 'lucide-react';
+import { ArrowLeft, BarChart3, Coins, Loader2, LogOut } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import type { CreditLedgerEntry, CreditPackage } from '../types';
 
 export const CreditsPage: React.FC = () => {
-  const { tenant, logout, updateCreditBalance } = useAuth();
+  const { tenant, company, logout, updateCreditBalance } = useAuth();
   const navigate = useNavigate();
   const [balance, setBalance] = useState(tenant?.creditBalance ?? 0);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
@@ -52,9 +52,14 @@ export const CreditsPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <Link to="/" className="inline-flex items-center gap-2 text-indigo-600 text-sm">
-            <ArrowLeft size={16} /> Volver a lotes
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link to="/" className="inline-flex items-center gap-2 text-indigo-600 text-sm">
+              <ArrowLeft size={16} /> Volver a lotes
+            </Link>
+            <Link to="/stats" className="inline-flex items-center gap-2 text-indigo-600 text-sm">
+              <BarChart3 size={16} /> IT1
+            </Link>
+          </div>
           <button
             onClick={async () => {
               await logout();
@@ -68,6 +73,10 @@ export const CreditsPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-2">
           <Coins className="text-amber-500" /> Créditos Gemini
         </h1>
+        <p className="text-slate-500 text-sm mb-1">
+          Saldo compartido del tenant
+          {company ? ` · empresa activa: ${company.name}` : ''}.
+        </p>
         <p className="text-slate-500 text-sm mb-6">
           1 crédito = 1 factura procesada con OCR. Upload, edición y Excel no consumen créditos.
         </p>

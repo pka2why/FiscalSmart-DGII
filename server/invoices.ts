@@ -31,7 +31,7 @@ invoicesRouter.post(
   upload.array("files", 40),
   async (req: AuthedRequest, res) => {
     try {
-      const batch = await assertBatchAccess(paramId(req.params.id), req.user!.tenantId);
+      const batch = await assertBatchAccess(paramId(req.params.id), req.user!.id);
       if (!batch) return res.status(404).json({ error: "Lote no encontrado" });
       if (batch.status === "archived") {
         return res.status(400).json({ error: "Lote archivado" });
@@ -93,7 +93,7 @@ invoicesRouter.post(
   requireAuth,
   async (req: AuthedRequest, res) => {
     try {
-      const batch = await assertBatchAccess(paramId(req.params.id), req.user!.tenantId);
+      const batch = await assertBatchAccess(paramId(req.params.id), req.user!.id);
       if (!batch) return res.status(404).json({ error: "Lote no encontrado" });
 
       const pending = await pool.query(
@@ -223,14 +223,18 @@ invoicesRouter.post(
 invoicesRouter.patch("/invoices/:id", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const found = await pool.query(
-      `SELECT i.*, b.tenant_id
+      `SELECT i.*, b.company_id
        FROM invoices i
        JOIN fiscal_batches b ON b.id = i.batch_id
        WHERE i.id = $1`,
       [paramId(req.params.id)]
     );
     const invoice = found.rows[0];
-    if (!invoice || invoice.tenant_id !== req.user!.tenantId) {
+    if (!invoice) {
+      return res.status(404).json({ error: "Factura no encontrada" });
+    }
+    const batch = await assertBatchAccess(invoice.batch_id, req.user!.id);
+    if (!batch) {
       return res.status(404).json({ error: "Factura no encontrada" });
     }
 
@@ -257,14 +261,18 @@ invoicesRouter.patch("/invoices/:id", requireAuth, async (req: AuthedRequest, re
 invoicesRouter.delete("/invoices/:id", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const found = await pool.query(
-      `SELECT i.*, b.tenant_id
+      `SELECT i.*, b.company_id
        FROM invoices i
        JOIN fiscal_batches b ON b.id = i.batch_id
        WHERE i.id = $1`,
       [paramId(req.params.id)]
     );
     const invoice = found.rows[0];
-    if (!invoice || invoice.tenant_id !== req.user!.tenantId) {
+    if (!invoice) {
+      return res.status(404).json({ error: "Factura no encontrada" });
+    }
+    const batch = await assertBatchAccess(invoice.batch_id, req.user!.id);
+    if (!batch) {
       return res.status(404).json({ error: "Factura no encontrada" });
     }
 
@@ -278,14 +286,18 @@ invoicesRouter.delete("/invoices/:id", requireAuth, async (req: AuthedRequest, r
 invoicesRouter.get("/invoices/:id/file", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const found = await pool.query(
-      `SELECT i.id, i.storage_path, i.mime_type, i.original_filename, i.file_data, b.tenant_id
+      `SELECT i.id, i.batch_id, i.storage_path, i.mime_type, i.original_filename, i.file_data, b.company_id
        FROM invoices i
        JOIN fiscal_batches b ON b.id = i.batch_id
        WHERE i.id = $1`,
       [paramId(req.params.id)]
     );
     const invoice = found.rows[0];
-    if (!invoice || invoice.tenant_id !== req.user!.tenantId) {
+    if (!invoice) {
+      return res.status(404).json({ error: "Factura no encontrada" });
+    }
+    const batch = await assertBatchAccess(invoice.batch_id, req.user!.id);
+    if (!batch) {
       return res.status(404).json({ error: "Factura no encontrada" });
     }
 

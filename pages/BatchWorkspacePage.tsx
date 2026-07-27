@@ -19,28 +19,8 @@ import {
 } from 'lucide-react';
 import { api, downloadAuthenticated } from '../api';
 import { useAuth } from '../AuthContext';
+import { GASTO_LABELS, INGRESO_LABELS } from '../dgiiLabels';
 import type { BatchExport, FiscalBatch, InvoiceRecord } from '../types';
-
-const GASTO_LABELS: Record<string, string> = {
-  '01': 'Gastos de personal',
-  '02': 'Gastos de trabajos, suministros y servicios',
-  '03': 'Arrendamientos',
-  '04': 'Gastos de activos fijos',
-  '05': 'Gastos de representación',
-  '06': 'Gastos deducciones admitidas',
-  '07': 'Gastos financieros',
-  '08': 'Gastos extraordinarios',
-  '09': 'Compras y gastos que forman parte del costo de venta',
-  '10': 'Adquisiciones de activos',
-  '11': 'Gastos de Seguros',
-};
-
-const INGRESO_LABELS: Record<string, string> = {
-  '01': 'Operaciones',
-  '02': 'Financieros',
-  '03': 'Extraordinarios',
-  '04': 'Otros Ingresos',
-};
 
 const validateRncCedulaByTipo = (val: any, tipoId?: string) => {
   if (!val) return { isValid: false, message: 'El campo es requerido' };
@@ -523,7 +503,7 @@ const InvoiceReviewModal: React.FC<{
 export const BatchWorkspacePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tenant, logout, updateCreditBalance } = useAuth();
+  const { tenant, company, logout, updateCreditBalance } = useAuth();
   const [batch, setBatch] = useState<FiscalBatch | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [exports, setExports] = useState<BatchExport[]>([]);
@@ -714,7 +694,9 @@ export const BatchWorkspacePage: React.FC = () => {
             <h1 className="font-bold text-slate-800">
               {batch.reportType} · {batch.period}
             </h1>
-            <p className="text-xs text-slate-500">Estado: {batch.status}</p>
+            <p className="text-xs text-slate-500">
+              {company ? `${company.name} · ` : ''}Estado: {batch.status}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3 text-sm">

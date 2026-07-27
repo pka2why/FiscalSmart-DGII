@@ -3,7 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, PieChart } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
-import type { AuthUser, Tenant } from '../types';
+import type { AuthUser, Company, Tenant } from '../types';
+
+type AuthResponse = {
+  user: AuthUser;
+  tenant: Tenant;
+  company: Company;
+  companies: Company[];
+};
 
 export const RegisterPage: React.FC = () => {
   const { setSession } = useAuth();
@@ -23,11 +30,11 @@ export const RegisterPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const data = await api<{ user: AuthUser; tenant: Tenant }>('/api/auth/register', {
+      const data = await api<AuthResponse>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(form),
       });
-      setSession(data.user, data.tenant);
+      setSession(data);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Error al registrar');
