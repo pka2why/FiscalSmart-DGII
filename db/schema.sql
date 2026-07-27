@@ -94,6 +94,9 @@ BEGIN
   END IF;
 END $$;
 
+-- Ensure unique (company_id, report_type, period). Drop as constraint first —
+-- Postgres backs UNIQUE with an index of the same name; DROP INDEX fails with 2BP01.
+ALTER TABLE fiscal_batches DROP CONSTRAINT IF EXISTS fiscal_batches_company_report_period_key;
 DROP INDEX IF EXISTS fiscal_batches_company_report_period_key;
 
 DO $$
