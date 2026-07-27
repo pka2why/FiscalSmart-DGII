@@ -45,6 +45,11 @@ async function startServer() {
   app.use("/api", invoicesRouter);
   app.use("/api", exportsRouter);
 
+  // JSON 404 for unmatched API routes (avoid silent HTML 404)
+  app.use("/api", (req, res) => {
+    res.status(404).json({ error: "API route not found", path: req.path });
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({

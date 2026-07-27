@@ -49,9 +49,12 @@ CREATE TABLE IF NOT EXISTS invoices (
   error TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   credits_charged INTEGER NOT NULL DEFAULT 0,
+  file_data BYTEA,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS file_data BYTEA;
 
 CREATE INDEX IF NOT EXISTS idx_invoices_batch ON invoices(batch_id);
 

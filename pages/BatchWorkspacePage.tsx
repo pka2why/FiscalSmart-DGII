@@ -89,7 +89,12 @@ function useAuthenticatedFileUrl(path: string | null, mimeType?: string) {
       setError('');
       try {
         const res = await fetch(path, { credentials: 'include' });
-        if (!res.ok) throw new Error(`No se pudo cargar el archivo (${res.status})`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(
+            data.message || data.error || `No se pudo cargar el archivo (${res.status})`
+          );
+        }
         const blob = await res.blob();
         const typed =
           mimeType && (!blob.type || blob.type === 'application/octet-stream')
