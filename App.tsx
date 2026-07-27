@@ -6,6 +6,7 @@ import { AdminCreditsPage } from './pages/AdminCreditsPage';
 import { BatchWorkspacePage } from './pages/BatchWorkspacePage';
 import { CreditsPage } from './pages/CreditsPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 
@@ -35,8 +36,22 @@ const PublicOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
+const HomeRoute: React.FC = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-indigo-600" size={40} />
+      </div>
+    );
+  }
+  if (user) return <DashboardPage />;
+  return <LandingPage />;
+};
+
 const AppRoutes: React.FC = () => (
   <Routes>
+    <Route path="/" element={<HomeRoute />} />
     <Route
       path="/login"
       element={
@@ -51,14 +66,6 @@ const AppRoutes: React.FC = () => (
         <PublicOnly>
           <RegisterPage />
         </PublicOnly>
-      }
-    />
-    <Route
-      path="/"
-      element={
-        <Protected>
-          <DashboardPage />
-        </Protected>
       }
     />
     <Route
