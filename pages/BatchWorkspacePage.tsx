@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -16,6 +16,8 @@ import {
   Play,
   Trash2,
   X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { api, downloadAuthenticated } from '../api';
 import { useAuth } from '../AuthContext';
@@ -130,9 +132,30 @@ const InvoiceReviewModal: React.FC<{
   );
   const [draft, setDraft] = useState<Record<string, any>>(invoice.extractedData || {});
   const [saving, setSaving] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const previewPaneRef = useRef<HTMLDivElement | null>(null);
+  const zoomRef = useRef(1);
+  const dragRef = useRef<{
+    active: boolean;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
+  const MIN_ZOOM = 1;
+  const MAX_ZOOM = 5;
+  const ZOOM_STEP = 0.25;
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
 
   useEffect(() => {
     setDraft(invoice.extractedData || {});
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   }, [invoice.id, invoice.updatedAt, invoice.extractedData]);
 
   const labels = reportType === '607' ? INGRESO_LABELS : GASTO_LABELS;
@@ -144,6 +167,61 @@ const InvoiceReviewModal: React.FC<{
 
   const rncCheck = validateRncCedulaByTipo(draft.rncCedula, draft.tipoId);
   const ncfCheck = validateNcfWithMsg(draft.ncf);
+
+  const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
+
+  const applyZoom = (next: number) => {
+    const z = clampZoom(Number(next.toFixed(2)));
+    setZoom(z);
+    zoomRef.current = z;
+    if (z <= MIN_ZOOM) setPan({ x: 0, y: 0 });
+  };
+
+  useEffect(() => {
+    const el = previewPaneRef.current;
+    if (!el || !isImage) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+      applyZoom(zoomRef.current + delta);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [isImage]);
+
+  const onPanStart = (e: React.PointerEvent) => {
+    if (!isImage || zoom <= MIN_ZOOM) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(true);
+    dragRef.current = {
+      active: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: pan.x,
+      originY: pan.y,
+    };
+  };
+
+  const onPanMove = (e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag?.active) return;
+    setPan({
+      x: drag.originX + (e.clientX - drag.startX),
+      y: drag.originY + (e.clientY - drag.startY),
+    });
+  };
+
+  const onPanEnd = (e: React.PointerEvent) => {
+    if (dragRef.current?.active) {
+      dragRef.current.active = false;
+      setDragging(false);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore if already released
+      }
+    }
+  };
 
   const updateLocal = (field: string, value: any) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -205,30 +283,80 @@ const InvoiceReviewModal: React.FC<{
         </div>
 
         <div className="grid md:grid-cols-2 flex-1 min-h-0 overflow-hidden">
-          <div className="bg-slate-900/95 p-3 md:p-4 overflow-auto flex items-start justify-center min-h-[280px]">
-            {loading && <Loader2 className="animate-spin text-white m-auto" size={32} />}
-            {!loading && error && (
-              <p className="text-red-300 text-sm m-auto text-center px-4">{error}</p>
+          <div className="relative bg-slate-900/95 min-h-[280px] overflow-hidden flex flex-col">
+            {isImage && url && !loading && !error && (
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-black/55 backdrop-blur-sm rounded-lg p-1">
+                <button
+                  type="button"
+                  onClick={() => applyZoom(zoom - ZOOM_STEP)}
+                  disabled={zoom <= MIN_ZOOM}
+                  className="p-1.5 rounded-md text-white hover:bg-white/15 disabled:opacity-40"
+                  title="Alejar"
+                  aria-label="Alejar"
+                >
+                  <ZoomOut size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyZoom(1)}
+                  className="min-w-[3.25rem] px-1.5 py-1 rounded-md text-xs text-white hover:bg-white/15 tabular-nums"
+                  title="Restablecer zoom"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyZoom(zoom + ZOOM_STEP)}
+                  disabled={zoom >= MAX_ZOOM}
+                  className="p-1.5 rounded-md text-white hover:bg-white/15 disabled:opacity-40"
+                  title="Acercar"
+                  aria-label="Acercar"
+                >
+                  <ZoomIn size={16} />
+                </button>
+              </div>
             )}
-            {!loading && url && isImage && (
-              <img
-                src={url}
-                alt={invoice.originalFilename}
-                className="max-w-full max-h-[80vh] object-contain rounded shadow-lg"
-              />
-            )}
-            {!loading && url && isPdf && (
-              <iframe title="pdf" src={url} className="w-full h-[80vh] rounded bg-white" />
-            )}
-            {!loading && url && !isImage && !isPdf && (
-              <a
-                href={url}
-                download={invoice.originalFilename}
-                className="text-indigo-200 underline m-auto"
-              >
-                Descargar archivo
-              </a>
-            )}
+
+            <div
+              ref={previewPaneRef}
+              className={`flex-1 p-3 md:p-4 overflow-hidden flex items-center justify-center ${
+                isImage && zoom > MIN_ZOOM ? 'cursor-grab active:cursor-grabbing' : ''
+              }`}
+              onPointerDown={onPanStart}
+              onPointerMove={onPanMove}
+              onPointerUp={onPanEnd}
+              onPointerCancel={onPanEnd}
+            >
+              {loading && <Loader2 className="animate-spin text-white m-auto" size={32} />}
+              {!loading && error && (
+                <p className="text-red-300 text-sm m-auto text-center px-4">{error}</p>
+              )}
+              {!loading && url && isImage && (
+                <img
+                  src={url}
+                  alt={invoice.originalFilename}
+                  draggable={false}
+                  className="max-w-full max-h-[80vh] object-contain rounded shadow-lg select-none"
+                  style={{
+                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                    transformOrigin: 'center center',
+                    transition: dragging ? 'none' : 'transform 0.12s ease-out',
+                  }}
+                />
+              )}
+              {!loading && url && isPdf && (
+                <iframe title="pdf" src={url} className="w-full h-[80vh] rounded bg-white" />
+              )}
+              {!loading && url && !isImage && !isPdf && (
+                <a
+                  href={url}
+                  download={invoice.originalFilename}
+                  className="text-indigo-200 underline m-auto"
+                >
+                  Descargar archivo
+                </a>
+              )}
+            </div>
           </div>
 
           <div className="overflow-auto p-4 md:p-5 space-y-4 bg-white">
