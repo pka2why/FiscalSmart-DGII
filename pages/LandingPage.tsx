@@ -312,7 +312,7 @@ export const LandingPage: React.FC = () => {
                 servicios, arrendamientos, financieros, etc.), montos de bienes/servicios,
                 ITBIS retenido y forma de pago.
               </p>
-              <ul className="space-y-2 text-[#d7ebe0]/
+              <ul className="space-y-2 text-[#d7ebe0]">
                 <li className="flex gap-2">
                   <CheckCircle2 size={18} className="text-[var(--fs-leaf)] flex-shrink-0 mt-0.5" />
                   RNC, NCF y fechas en formato YYYYMMDD
